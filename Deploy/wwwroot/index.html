@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marketing Personnel Manager</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <!-- Bootstrap Icons -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    rel="stylesheet"
+  />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ============================================================
+       Custom Theme – clean, professional, data-focused
+    ============================================================ */
+    :root {
+      --primary:      #1e3a5f;
+      --primary-lt:   #2a5298;
+      --accent:       #f0a500;
+      --accent-lt:    #ffc93c;
+      --bg:           #f4f6fb;
+      --card:         #ffffff;
+      --border:       #dde3ef;
+      --text:         #2c3e50;
+      --text-muted:   #6c7a8d;
+      --success:      #27ae60;
+      --danger:       #c0392b;
+      --sidebar-w:    320px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ---- Top navbar ---- */
+    .navbar-brand { font-weight: 700; font-size: 1.2rem; letter-spacing: .03em; }
+    .navbar { background: var(--primary) !important; }
+    .navbar .navbar-brand, .navbar .nav-link { color: #fff !important; }
+
+    /* ---- Layout: left personnel panel + right sales panel ---- */
+    .main-layout {
+      display: flex;
+      height: calc(100vh - 60px);
+      overflow: hidden;
+    }
+
+    /* Left panel – Personnel list */
+    .panel-personnel {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 1rem 1rem .75rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--primary);
+      color: #fff;
+    }
+    .panel-header h6 { margin: 0; font-weight: 600; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; }
+
+    .personnel-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: .5rem;
+    }
+
+    .personnel-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .75rem 1rem;
+      margin-bottom: .5rem;
+      cursor: pointer;
+      transition: all .15s ease;
+      background: #fff;
+    }
+    .personnel-card:hover { border-color: var(--primary-lt); background: #f0f4ff; }
+    .personnel-card.active { border-color: var(--primary); background: #e8edf8; }
+    .personnel-card .name { font-weight: 600; font-size: .9rem; }
+    .personnel-card .meta { color: var(--text-muted); font-size: .78rem; margin-top: .1rem; }
+
+    /* Actions row */
+    .panel-actions { padding: .75rem 1rem; border-top: 1px solid var(--border); display: flex; gap: .5rem; }
+
+    /* Right panel – Sales & details */
+    .panel-sales {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sales-header {
+      padding: 1rem 1.5rem;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .sales-header .person-name { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+    .sales-header .person-meta { color: var(--text-muted); font-size: .85rem; }
+
+    .sales-body { flex: 1; overflow-y: auto; padding: 1.5rem; }
+
+    /* Toggle buttons */
+    .view-toggle .btn { font-size: .8rem; padding: .3rem .75rem; }
+
+    /* Chart container */
+    #chartContainer { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+    #salesChart { max-height: 320px; }
+
+    /* Sales table */
+    .table-wrapper { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .table th { background: var(--primary); color: #fff; font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .table td { vertical-align: middle; font-size: .88rem; }
+    .table-hover tbody tr:hover { background: #f0f4ff; }
+
+    /* Summary cards */
+    .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; }
+    .summary-card .label { font-size: .75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+    .summary-card .value { font-size: 1.4rem; font-weight: 700; color: var(--primary); margin-top: .1rem; }
+    .summary-card .value.accent { color: var(--accent); }
+
+    /* Placeholder state */
+    .empty-state { text-align: center; color: var(--text-muted); padding: 4rem 2rem; }
+    .empty-state i { font-size: 3.5rem; display: block; margin-bottom: 1rem; opacity: .4; }
+
+    /* Badges */
+    .badge-age { background: #e8edf8; color: var(--primary); border-radius: 4px; font-size: .75rem; padding: .15rem .45rem; }
+
+    /* Modal tweak */
+    .modal-header { background: var(--primary); color: #fff; }
+    .modal-header .btn-close { filter: invert(1); }
+
+    /* Toast */
+    .toast-container { z-index: 9999; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .main-layout { flex-direction: column; height: auto; }
+      .panel-personnel { width: 100%; min-width: 0; height: 280px; }
+    }
+
+    /* Spinner overlay */
+    #loadingOverlay {
+      position: fixed; inset: 0; background: rgba(255,255,255,.65);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10000; display: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ============================================================
+     NAVBAR
+============================================================ -->
+<nav class="navbar navbar-expand-lg py-2">
+  <div class="container-fluid px-3">
+    <span class="navbar-brand">
+      <i class="bi bi-bar-chart-line-fill me-2"></i>Marketing Personnel Manager
+    </span>
+    <span class="ms-auto text-white-50" style="font-size:.8rem;">
+      <i class="bi bi-circle-fill text-success me-1" style="font-size:.5rem;"></i>Live
+    </span>
+  </div>
+</nav>
+
+<!-- Loading overlay -->
+<div id="loadingOverlay">
+  <div class="spinner-border text-primary" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+</div>
+
+<!-- ============================================================
+     MAIN LAYOUT
+============================================================ -->
+<div class="main-layout">
+
+  <!-- ---- LEFT: Personnel panel ---- -->
+  <aside class="panel-personnel">
+    <div class="panel-header d-flex justify-content-between align-items-center">
+      <h6><i class="bi bi-people-fill me-2"></i>Personnel</h6>
+      <span class="badge bg-warning text-dark" id="personnelCount">0</span>
+    </div>
+
+    <div class="personnel-list" id="personnelList">
+      <div class="empty-state" id="personnelEmpty">
+        <i class="bi bi-person-x"></i>
+        <p>No personnel found.</p>
+      </div>
+    </div>
+
+    <div class="panel-actions">
+      <button class="btn btn-sm btn-primary flex-grow-1" onclick="openAddPersonnel()">
+        <i class="bi bi-person-plus-fill me-1"></i>Add Personnel
+      </button>
+    </div>
+  </aside>
+
+  <!-- ---- RIGHT: Sales panel ---- -->
+  <main class="panel-sales">
+    <!-- No person selected state -->
+    <div id="salesPlaceholder" class="d-flex align-items-center justify-content-center h-100">
+      <div class="empty-state">
+        <i class="bi bi-graph-up-arrow"></i>
+        <h5>Select a personnel member</h5>
+        <p>Click on a person in the list to view their sales data.</p>
+      </div>
+    </div>
+
+    <!-- Sales content (hidden until person selected) -->
+    <div id="salesContent" style="display:none; height:100%; flex-direction:column; display:flex;">
+      <!-- Header bar -->
+      <div class="sales-header">
+        <div class="flex-grow-1">
+          <div class="person-name" id="selectedPersonName">—</div>
+          <div class="person-meta" id="selectedPersonMeta">—</div>
+        </div>
+        <!-- View toggle -->
+        <div class="view-toggle btn-group" role="group">
+          <button class="btn btn-outline-primary active" id="btnChart" onclick="setView('chart')">
+            <i class="bi bi-bar-chart-fill me-1"></i>Chart
+          </button>
+          <button class="btn btn-outline-primary" id="btnGrid" onclick="setView('grid')">
+            <i class="bi bi-table me-1"></i>Grid
+          </button>
+        </div>
+        <!-- Sales actions -->
+        <button class="btn btn-sm btn-success" onclick="openAddSale()">
+          <i class="bi bi-plus-circle-fill me-1"></i>Add Sale
+        </button>
+        <button class="btn btn-sm btn-outline-secondary ms-1" onclick="openEditPersonnel()">
+          <i class="bi bi-pencil-fill me-1"></i>Edit
+        </button>
+        <button class="btn btn-sm btn-outline-danger ms-1" onclick="confirmDeletePersonnel()">
+          <i class="bi bi-trash-fill me-1"></i>Delete
+        </button>
+      </div>
+
+      <!-- Sales body -->
+      <div class="sales-body">
+        <!-- Summary cards -->
+        <div class="row g-3 mb-4" id="summaryCards">
+          <div class="col-6 col-md-3">
+            <div class="summary-card">
+              <div class="label">Total Records</div>
+              <div class="value" id="sumCount">—</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="summary-card">
+              <div class="label">Total Sales</div>
+              <div class="value accent" id="sumTotal">—</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="summary-card">
+              <div class="label">Average / Day</div>
+              <div class="value" id="sumAvg">—</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="summary-card">
+              <div class="label">Best Day</div>
+              <div class="value" id="sumBest">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart view -->
+        <div id="chartView">
+          <div id="chartContainer">
+            <canvas id="salesChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Grid view -->
+        <div id="gridView" style="display:none;">
+          <div class="table-wrapper">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Date</th>
+                  <th class="text-end">Amount (RM)</th>
+                  <th class="text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="salesTableBody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /sales-body -->
+    </div><!-- /salesContent -->
+  </main>
+
+</div><!-- /main-layout -->
+
+
+<!-- ============================================================
+     MODAL: Add / Edit Personnel
+============================================================ -->
+<div class="modal fade" id="personnelModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="personnelModalTitle">Add Personnel</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="personnelFormAlert" class="alert alert-danger d-none"></div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="pName" maxlength="50" placeholder="e.g. Alice Johnson" />
+          <div class="invalid-feedback" id="pNameErr"></div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Age <span class="text-danger">*</span></label>
+          <input type="number" class="form-control" id="pAge" min="19" max="120" placeholder="Must be > 18" />
+          <div class="invalid-feedback" id="pAgeErr"></div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Phone <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="pPhone" maxlength="20" placeholder="e.g. 012-3456789" />
+          <div class="invalid-feedback" id="pPhoneErr"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="btnSavePersonnel" onclick="savePersonnel()">
+          <i class="bi bi-save me-1"></i>Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Add Sale
+============================================================ -->
+<div class="modal fade" id="saleModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add Sales Record</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="saleFormAlert" class="alert alert-danger d-none"></div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Date <span class="text-danger">*</span></label>
+          <input type="date" class="form-control" id="sDate" />
+          <div class="invalid-feedback" id="sDateErr"></div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Sales Amount (RM) <span class="text-danger">*</span></label>
+          <input type="number" class="form-control" id="sAmount" min="0" step="0.01" placeholder="e.g. 4200.00" />
+          <div class="invalid-feedback" id="sAmountErr"></div>
+        </div>
+        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Sales records cannot be edited once saved.</small>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-success" onclick="saveSale()">
+          <i class="bi bi-plus-circle me-1"></i>Add Record
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Confirm Delete Personnel
+============================================================ -->
+<div class="modal fade" id="deletePersonnelModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Delete</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete <strong id="deletePersonnelName">—</strong>?</p>
+        <div class="alert alert-warning mb-0">
+          <i class="bi bi-exclamation-circle me-1"></i>
+          <strong>Warning:</strong> All sales records associated with this person will also be permanently deleted.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" onclick="deletePersonnel()">
+          <i class="bi bi-trash me-1"></i>Yes, Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Confirm Delete Sale
+============================================================ -->
+<div class="modal fade" id="deleteSaleModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Delete Sale</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Delete the sales record for <strong id="deleteSaleDate">—</strong>?</p>
+        <p class="text-muted mb-0">This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" onclick="deleteSale()">
+          <i class="bi bi-trash me-1"></i>Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notifications -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="appToast" class="toast align-items-center border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toastMsg"></div>
+      <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/* ============================================================
+   Configuration
+   Change API_BASE to match your server URL if needed.
+   In production, this should be a relative path like '/api'
+   if the frontend is served from the same origin as the API.
+============================================================ */
+const API_BASE = '/api';  // Change if running API on a different port
+
+/* ============================================================
+   Application State
+============================================================ */
+let personnel = [];         // All personnel from API
+let currentPerson = null;   // Currently selected person object
+let salesData = [];         // Sales for current person
+let chartInstance = null;   // Chart.js instance
+let currentView = 'chart';  // 'chart' or 'grid'
+let pendingDeletePersonnelId = null;
+let pendingDeleteSaleId = null;
+
+/* ============================================================
+   Bootstrap Modal references
+============================================================ */
+const personnelModal     = new bootstrap.Modal(document.getElementById('personnelModal'));
+const saleModal          = new bootstrap.Modal(document.getElementById('saleModal'));
+const deletePersonModal  = new bootstrap.Modal(document.getElementById('deletePersonnelModal'));
+const deleteSaleModal    = new bootstrap.Modal(document.getElementById('deleteSaleModal'));
+
+/* ============================================================
+   Utility helpers
+============================================================ */
+
+// Format number as Malaysian Ringgit
+function formatMoney(amount) {
+  return 'RM ' + parseFloat(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Format date as DD MMM YYYY
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// Show/hide loading overlay
+function setLoading(show) {
+  document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+}
+
+// Show a toast notification
+function showToast(msg, type = 'success') {
+  const toast = document.getElementById('appToast');
+  const toastMsg = document.getElementById('toastMsg');
+  toast.className = `toast align-items-center border-0 text-bg-${type}`;
+  toastMsg.textContent = msg;
+  new bootstrap.Toast(toast, { delay: 3000 }).show();
+}
+
+/* ============================================================
+   API functions – all using fetch()
+============================================================ */
+
+async function apiFetch(url, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  if (body) opts.body = JSON.stringify(body);
+
+  const res = await fetch(API_BASE + url, opts);
+
+  // 204 No Content has no body
+  if (res.status === 204) return null;
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    // Collect validation errors from the API
+    let errMsg = data?.message || data?.title || 'An error occurred.';
+    if (data?.errors) {
+      errMsg = Object.values(data.errors).flat().join(' ');
+    }
+    throw new Error(errMsg);
+  }
+  return data;
+}
+
+/* ============================================================
+   Personnel – Load & Render
+============================================================ */
+
+async function loadPersonnel() {
+  setLoading(true);
+  try {
+    personnel = await apiFetch('/personnel');
+    renderPersonnelList();
+  } catch (e) {
+    showToast('Failed to load personnel: ' + e.message, 'danger');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function renderPersonnelList() {
+  const list = document.getElementById('personnelList');
+  const empty = document.getElementById('personnelEmpty');
+  document.getElementById('personnelCount').textContent = personnel.length;
+
+  // Remove old cards (keep the empty state element)
+  [...list.querySelectorAll('.personnel-card')].forEach(c => c.remove());
+
+  if (personnel.length === 0) {
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  personnel.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'personnel-card' + (currentPerson?.Id === p.Id ? ' active' : '');
+    card.dataset.id = p.Id;
+    card.innerHTML = `
+      <div class="name">${escapeHtml(p.Name)}</div>
+      <div class="meta">
+        <span class="badge-age"><i class="bi bi-person me-1"></i>${p.Age} yrs</span>
+        <i class="bi bi-telephone ms-2 me-1"></i>${escapeHtml(p.Phone)}
+      </div>
+    `;
+    card.addEventListener('click', () => selectPersonnel(p));
+    list.appendChild(card);
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* ============================================================
+   Select Personnel → Load Sales
+============================================================ */
+
+async function selectPersonnel(p) {
+  currentPerson = p;
+
+  // Highlight selected card
+  document.querySelectorAll('.personnel-card').forEach(c => c.classList.remove('active'));
+  const card = document.querySelector(`.personnel-card[data-id="${p.Id}"]`);
+  if (card) card.classList.add('active');
+
+  // Show sales panel
+  document.getElementById('salesPlaceholder').style.display = 'none';
+  document.getElementById('salesContent').style.display = 'flex';
+  document.getElementById('selectedPersonName').textContent = p.Name;
+  document.getElementById('selectedPersonMeta').textContent =
+    `Age: ${p.Age}  |  Phone: ${p.Phone}`;
+
+  await loadSales();
+}
+
+/* ============================================================
+   Sales – Load & Render
+============================================================ */
+
+async function loadSales() {
+  if (!currentPerson) return;
+  setLoading(true);
+  try {
+    salesData = await apiFetch(`/personnel/${currentPerson.Id}/sales`);
+    renderSales();
+  } catch (e) {
+    showToast('Failed to load sales: ' + e.message, 'danger');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function renderSales() {
+  updateSummaryCards();
+  if (currentView === 'chart') renderChart();
+  else renderGrid();
+}
+
+function updateSummaryCards() {
+  const count = salesData.length;
+  const total = salesData.reduce((s, r) => s + parseFloat(r.SalesAmount), 0);
+  const avg   = count > 0 ? total / count : 0;
+  const best  = count > 0 ? Math.max(...salesData.map(r => parseFloat(r.SalesAmount))) : 0;
+
+  document.getElementById('sumCount').textContent  = count;
+  document.getElementById('sumTotal').textContent  = formatMoney(total);
+  document.getElementById('sumAvg').textContent    = formatMoney(avg);
+  document.getElementById('sumBest').textContent   = formatMoney(best);
+}
+
+/* ============================================================
+   Chart view (Chart.js bar chart)
+============================================================ */
+
+function renderChart() {
+  const labels  = salesData.map(r => formatDate(r.ReportDate));
+  const amounts = salesData.map(r => parseFloat(r.SalesAmount));
+
+  // Destroy previous chart instance to prevent canvas conflicts
+  if (chartInstance) {
+    chartInstance.destroy();
+    chartInstance = null;
+  }
+
+  const ctx = document.getElementById('salesChart').getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Sales Amount (RM)',
+        data: amounts,
+        backgroundColor: 'rgba(30,58,95,0.75)',
+        borderColor: '#1e3a5f',
+        borderWidth: 1,
+        borderRadius: 4,
+        hoverBackgroundColor: '#f0a500'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + formatMoney(ctx.raw)
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: v => 'RM ' + v.toLocaleString()
+          }
+        }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   Grid view (table)
+============================================================ */
+
+function renderGrid() {
+  const tbody = document.getElementById('salesTableBody');
+  tbody.innerHTML = '';
+
+  if (salesData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No sales records found.</td></tr>`;
+    return;
+  }
+
+  salesData.forEach((s, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${formatDate(s.ReportDate)}</td>
+      <td class="text-end fw-semibold">${formatMoney(s.SalesAmount)}</td>
+      <td class="text-center">
+        <button class="btn btn-sm btn-outline-danger py-0"
+                onclick="confirmDeleteSale(${s.Id}, '${formatDate(s.ReportDate)}')">
+          <i class="bi bi-trash-fill"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ============================================================
+   View toggle (Chart / Grid)
+============================================================ */
+
+function setView(view) {
+  currentView = view;
+  document.getElementById('chartView').style.display = view === 'chart' ? '' : 'none';
+  document.getElementById('gridView').style.display  = view === 'grid'  ? '' : 'none';
+  document.getElementById('btnChart').classList.toggle('active', view === 'chart');
+  document.getElementById('btnGrid').classList.toggle('active', view === 'grid');
+
+  if (view === 'chart') renderChart();
+  else renderGrid();
+}
+
+/* ============================================================
+   Personnel – Add / Edit Modal
+============================================================ */
+
+let editingPersonnelId = null;
+
+function openAddPersonnel() {
+  editingPersonnelId = null;
+  document.getElementById('personnelModalTitle').textContent = 'Add Personnel';
+  clearPersonnelForm();
+  personnelModal.show();
+}
+
+function openEditPersonnel() {
+  if (!currentPerson) return;
+  editingPersonnelId = currentPerson.Id;
+  document.getElementById('personnelModalTitle').textContent = 'Edit Personnel';
+  document.getElementById('pName').value  = currentPerson.Name;
+  document.getElementById('pAge').value   = currentPerson.Age;
+  document.getElementById('pPhone').value = currentPerson.Phone;
+  clearPersonnelFormErrors();
+  personnelModal.show();
+}
+
+function clearPersonnelForm() {
+  ['pName','pAge','pPhone'].forEach(id => document.getElementById(id).value = '');
+  clearPersonnelFormErrors();
+}
+
+function clearPersonnelFormErrors() {
+  ['pName','pAge','pPhone'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('is-invalid','is-valid');
+  });
+  document.getElementById('personnelFormAlert').classList.add('d-none');
+}
+
+// Client-side validation for personnel form
+function validatePersonnelForm() {
+  let valid = true;
+  clearPersonnelFormErrors();
+
+  const name  = document.getElementById('pName').value.trim();
+  const age   = parseInt(document.getElementById('pAge').value, 10);
+  const phone = document.getElementById('pPhone').value.trim();
+
+  if (!name) {
+    setFieldError('pName', 'pNameErr', 'Name is required.');
+    valid = false;
+  }
+  if (!document.getElementById('pAge').value || isNaN(age) || age <= 18) {
+    setFieldError('pAge', 'pAgeErr', 'Age is required and must be greater than 18.');
+    valid = false;
+  }
+  if (!phone) {
+    setFieldError('pPhone', 'pPhoneErr', 'Phone is required.');
+    valid = false;
+  }
+  return valid;
+}
+
+function setFieldError(fieldId, errId, msg) {
+  document.getElementById(fieldId).classList.add('is-invalid');
+  document.getElementById(errId).textContent = msg;
+}
+
+async function savePersonnel() {
+  if (!validatePersonnelForm()) return;
+
+  const payload = {
+    Name:  document.getElementById('pName').value.trim(),
+    Age:   parseInt(document.getElementById('pAge').value, 10),
+    Phone: document.getElementById('pPhone').value.trim()
+  };
+
+  setLoading(true);
+  try {
+    if (editingPersonnelId) {
+      const updated = await apiFetch(`/personnel/${editingPersonnelId}`, 'PUT', payload);
+      // Update local state
+      const idx = personnel.findIndex(p => p.Id === editingPersonnelId);
+      if (idx > -1) personnel[idx] = updated;
+      if (currentPerson?.Id === editingPersonnelId) {
+        currentPerson = updated;
+        document.getElementById('selectedPersonName').textContent = updated.Name;
+        document.getElementById('selectedPersonMeta').textContent =
+          `Age: ${updated.Age}  |  Phone: ${updated.Phone}`;
+      }
+      showToast('Personnel updated successfully.');
+    } else {
+      const created = await apiFetch('/personnel', 'POST', payload);
+      personnel.push(created);
+      showToast('Personnel added successfully.');
+    }
+    renderPersonnelList();
+    personnelModal.hide();
+  } catch (e) {
+    document.getElementById('personnelFormAlert').textContent = e.message;
+    document.getElementById('personnelFormAlert').classList.remove('d-none');
+  } finally {
+    setLoading(false);
+  }
+}
+
+/* ============================================================
+   Personnel – Delete
+============================================================ */
+
+function confirmDeletePersonnel() {
+  if (!currentPerson) return;
+  pendingDeletePersonnelId = currentPerson.Id;
+  document.getElementById('deletePersonnelName').textContent = currentPerson.Name;
+  deletePersonModal.show();
+}
+
+async function deletePersonnel() {
+  if (!pendingDeletePersonnelId) return;
+  setLoading(true);
+  try {
+    await apiFetch(`/personnel/${pendingDeletePersonnelId}`, 'DELETE');
+    personnel = personnel.filter(p => p.Id !== pendingDeletePersonnelId);
+
+    // If deleted person was selected, reset the right panel
+    if (currentPerson?.Id === pendingDeletePersonnelId) {
+      currentPerson = null;
+      document.getElementById('salesContent').style.display = 'none';
+      document.getElementById('salesPlaceholder').style.display = '';
+    }
+
+    renderPersonnelList();
+    deletePersonModal.hide();
+    showToast('Personnel and all their sales records deleted.', 'warning');
+  } catch (e) {
+    showToast('Delete failed: ' + e.message, 'danger');
+  } finally {
+    setLoading(false);
+    pendingDeletePersonnelId = null;
+  }
+}
+
+/* ============================================================
+   Sales – Add Modal
+============================================================ */
+
+function openAddSale() {
+  if (!currentPerson) return;
+  // Default date to today
+  document.getElementById('sDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('sAmount').value = '';
+  document.getElementById('sDateErr').textContent = '';
+  document.getElementById('sAmountErr').textContent = '';
+  document.getElementById('sDate').classList.remove('is-invalid');
+  document.getElementById('sAmount').classList.remove('is-invalid');
+  document.getElementById('saleFormAlert').classList.add('d-none');
+  saleModal.show();
+}
+
+async function saveSale() {
+  let valid = true;
+  document.getElementById('sDate').classList.remove('is-invalid');
+  document.getElementById('sAmount').classList.remove('is-invalid');
+  document.getElementById('saleFormAlert').classList.add('d-none');
+
+  const dateVal   = document.getElementById('sDate').value;
+  const amountVal = parseFloat(document.getElementById('sAmount').value);
+
+  if (!dateVal) {
+    document.getElementById('sDate').classList.add('is-invalid');
+    document.getElementById('sDateErr').textContent = 'Date is required.';
+    valid = false;
+  }
+  if (isNaN(amountVal) || amountVal < 0) {
+    document.getElementById('sAmount').classList.add('is-invalid');
+    document.getElementById('sAmountErr').textContent = 'Enter a valid positive amount.';
+    valid = false;
+  }
+  if (!valid) return;
+
+  const payload = { ReportDate: new Date(dateVal).toISOString(), SalesAmount: amountVal };
+  setLoading(true);
+  try {
+    await apiFetch(`/personnel/${currentPerson.Id}/sales`, 'POST', payload);
+    await loadSales();
+    saleModal.hide();
+    showToast('Sales record added.');
+  } catch (e) {
+    document.getElementById('saleFormAlert').textContent = e.message;
+    document.getElementById('saleFormAlert').classList.remove('d-none');
+  } finally {
+    setLoading(false);
+  }
+}
+
+/* ============================================================
+   Sales – Delete
+============================================================ */
+
+function confirmDeleteSale(saleId, dateStr) {
+  pendingDeleteSaleId = saleId;
+  document.getElementById('deleteSaleDate').textContent = dateStr;
+  deleteSaleModal.show();
+}
+
+async function deleteSale() {
+  if (!pendingDeleteSaleId || !currentPerson) return;
+  setLoading(true);
+  try {
+    await apiFetch(`/personnel/${currentPerson.Id}/sales/${pendingDeleteSaleId}`, 'DELETE');
+    await loadSales();
+    deleteSaleModal.hide();
+    showToast('Sales record deleted.', 'warning');
+  } catch (e) {
+    showToast('Delete failed: ' + e.message, 'danger');
+  } finally {
+    setLoading(false);
+    pendingDeleteSaleId = null;
+  }
+}
+
+/* ============================================================
+   Bootstrap form Enter-key support
+============================================================ */
+document.getElementById('pPhone').addEventListener('keydown', e => { if (e.key === 'Enter') savePersonnel(); });
+document.getElementById('sAmount').addEventListener('keydown', e => { if (e.key === 'Enter') saveSale(); });
+
+/* ============================================================
+   Initialise app
+============================================================ */
+loadPersonnel();
+</script>
+</body>
+</html>
